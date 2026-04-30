@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Management Center</title>
+    <style>
+        :root {
+            --bg-base: #0f172a;
+            --bg-surface: #1e293b;
+            --bg-surface-hover: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-primary: #3b82f6;
+            --accent-primary-hover: #2563eb;
+            --accent-url: #8b5cf6;
+            --accent-ssh: #10b981;
+            --accent-rdp: #eab308;
+            --danger: #ef4444;
+            --danger-hover: #f87171;
+            --success: #10b981;
+            --border-color: #334155;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navbar */
+        header {
+            background-color: var(--bg-surface);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-main);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* Search */
+        .search-container {
+            position: relative;
+        }
+
+        .search-container svg {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .search-input {
+            background-color: var(--bg-base);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.5rem 1rem 0.5rem 2.5rem;
+            border-radius: 8px;
+            outline: none;
+            width: 250px;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        /* Buttons */
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary { background-color: var(--accent-primary); color: white; }
+        .btn-primary:hover { background-color: var(--accent-primary-hover); }
+        
+        .btn-secondary { background-color: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
+        .btn-secondary:hover { background-color: var(--bg-surface-hover); }
+
+        .btn-danger-outline { background-color: transparent; border: 1px solid var(--danger); color: var(--danger); }
+        .btn-danger-outline:hover { background-color: rgba(239, 68, 68, 0.1); color: var(--danger-hover); border-color: var(--danger-hover); }
+
+        .btn-icon { padding: 0.5rem; background: transparent; color: var(--text-muted); border-radius: 6px; }
+        .btn-icon:hover { color: var(--text-main); background-color: var(--bg-surface-hover); }
+        .btn-icon.danger:hover { color: var(--danger); }
+
+        /* Main Content */
+        main {
+            padding: 2rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* --- DASHBOARD TOP ROW (Gauge & Metrics) --- */
+        .dashboard-top-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-top-row { grid-template-columns: 1fr; }
+        }
+
+        .gauge-container {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow);
+        }
+
+        .gaugeCanvas {
+            width: 200px;
+            height: 150px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .metrics-grid { grid-template-columns: 1fr; }
+        }
+
+        .metric-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--text-muted);
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* --- CATEGORY TABLE --- */
+        .table-container {
+            background-color: var(--bg-surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            overflow-x: auto;
+            box-shadow: var(--shadow);
+        }
+
+        .table-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .row-category {
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .row-subcategory {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .row-subcategory td:first-child {
+            padding-left: 3rem;
+        }
+
+        /* Filters */
+        .filters-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .filters-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .filters-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            width: 70px;
+        }
+
+        .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+        .filter-tab {
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            background-color: var(--bg-surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .filter-tab:hover {
+            color: var(--text-main);
+            border-color: var(--text-muted);
+        }
+
+        .filter-tab.active {
+            background-color: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
+        /* Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--bg-surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .card:hover { transform: translateY(-2px); border-color: var(--text-muted); }
+
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+
+        .card-meta-tags {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .card-type {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            padding: 0.2rem 0.5rem; border-radius: 4px; display: inline-block;
+        }
+
+        .type-url { background-color: rgba(139, 92, 246, 0.15); color: var(--accent-url); border: 1px solid rgba(139, 92, 246, 0.3); }
+        .type-ssh { background-color: rgba(16, 185, 129, 0.15); color: var(--accent-ssh); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .type-rdp { background-color: rgba(234, 179, 8, 0.15); color: var(--accent-rdp); border: 1px solid rgba(234, 179, 8, 0.3); }
+
+        .card-category-tag {
+            font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+            padding: 0.2rem 0.5rem; border-radius: 4px;
+            background-color: var(--bg-base); color: var(--text-muted); border: 1px solid var(--border-color);
+        }
+
+        .card-loc { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.25rem; margin-top: 0.25rem; }
+        .card-title { font-size: 1.125rem; font-weight: 600; word-break: break-word; color: var(--text-main); }
+
+        .card-value-container {
+            background-color: var(--bg-base); padding: 0.75rem; border-radius: 8px;
+            display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); gap: 0.5rem;
+        }
+
+        .card-value {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.875rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        .card-actions { display: flex; gap: 0.25rem; }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 50; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        }
+
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal {
+            background-color: var(--bg-surface); border-radius: var(--radius);
+            width: 100%; max-width: 450px; border: 1px solid var(--border-color);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5);
+            transform: scale(0.95); transition: transform 0.2s;
+            max-height: 90vh; overflow-y: auto;
+        }
+
+        .modal-overlay.active .modal { transform: scale(1); }
+
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h3 { font-size: 1.125rem; font-weight: 600; margin: 0; }
+        .modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .form-group label { font-size: 0.875rem; color: var(--text-muted); font-weight: 500; }
+        .form-control {
+            background-color: var(--bg-base); border: 1px solid var(--border-color);
+            color: var(--text-main); padding: 0.75rem; border-radius: 8px; outline: none; font-size: 0.95rem;
+        }
+        .form-control:focus { border-color: var(--accent-primary); }
+
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1rem; padding-right: 2.5rem;
+        }
+
+        .modal-footer { padding: 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem; }
+
+        /* Settings Card Info */
+        .info-card {
+            background-color: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            line-height: 1.5;
+        }
+        .info-card strong { color: var(--accent-primary); }
+
+        /* Toast & Utils */
+        .toast {
+            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px);
+            background-color: var(--text-main); color: var(--bg-base); font-weight: 600;
+            padding: 0.75rem 1.5rem; border-radius: 20px; font-size: 0.875rem;
+            box-shadow: var(--shadow); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 4rem 2rem; color: var(--text-muted); text-align: center; grid-column: 1 / -1;
+        }
+        .empty-state svg { width: 48px; height: 48px; margin-bottom: 1rem; opacity: 0.5; }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.75rem; border-top: 1px solid var(--border-color); margin-top: auto; }
+        .sample-csv-link { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--accent-primary); text-decoration: none; font-size: 0.875rem; margin-top: 0.5rem; }
+        .sample-csv-link:hover { text-decoration: underline; }
+        #csvFileInput { display: none; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-primary)"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            Remote Management Center
+        </div>
+        <div class="header-actions">
+            <div class="search-container">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search connections...">
+            </div>
+            
+            <!-- Settings Button Added Here -->
+            <button class="btn-secondary" onclick="openModal('settingsModal')" title="Dashboard Settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+
+            <button class="btn-secondary" onclick="exportCSV()" title="Export database to CSV">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Export
+            </button>
+            <button class="btn-secondary" onclick="openModal('csvModal')" title="Import nodes from CSV">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                Import
+            </button>
+            <button class="btn-primary" onclick="openModal('addModal')" title="Add a new node">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Add New
+            </button>
+            <button class="btn-danger-outline" onclick="wipeDatabase()" title="Purge database">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                Purge
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Dashboard / Reporting Section -->
+        <div class="dashboard-top-row">
+            <div class="gauge-container">
+                <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600;">
+                    Security Health Check
+                </div>
+                <canvas id="gauge_global" class="gaugeCanvas"></canvas>
+                <div style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.5rem; font-weight: 500;">
+                    Overall Compliance (HTTPS/SSH)
+                </div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Total Nodes</div>
+                    <div class="metric-value" id="statTotalNodes">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Secure Connections</div>
+                    <div class="metric-value" id="statSecureNodes" style="color: var(--success);">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Unsecure Connections</div>
+                    <div class="metric-value" id="statUnsecureNodes" style="color: var(--danger);">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Identified Locations</div>
+                    <div class="metric-value" id="statLocations">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hierarchical Category Table -->
+        <div class="table-container">
+            <div class="table-title">Category Compliance & Overview</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category / Subcategory</th>
+                        <th>Total Devices</th>
+                    </tr>
+                </thead>
+                <tbody id="categoryTableBody">
+                    <!-- Populated via JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Filters & Grid View -->
+        <div class="filters-container">
+            <div class="filters-row">
+                <div class="filters-label">Type:</div>
+                <div class="filters" id="filterTabs">
+                    <div class="filter-tab active" data-filter="all">All Connections</div>
+                    <div class="filter-tab" data-filter="url">Web URLs</div>
+                    <div class="filter-tab" data-filter="ssh">SSH Nodes</div>
+                    <div class="filter-tab" data-filter="rdp">RDP Nodes</div>
+                </div>
+            </div>
+            <div class="filters-row" id="locationTabsWrapper" style="display: none;">
+                <div class="filters-label">Location:</div>
+                <div class="filters" id="locationTabs">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+            <div class="filters-row" id="categoryTabsWrapper" style="display: none;">
+                <div class="filters-label">Category:</div>
+                <div class="filters" id="categoryTabs">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </div>
+
+        <div class="grid" id="connectionsGrid">
+            <!-- Cards will be injected here via JS -->
+        </div>
+    </main>
+
+    <footer>
+        Created by Adnan Zafar | Disclaimer: This site runs on http only and does not store any confidential data.
+    </footer>
+
+    <!-- SETTINGS MODAL -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Dashboard Settings</h3>
+                <button class="btn-icon" onclick="closeModal('settingsModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                
+                <!-- Client Preference Selection -->
+                <div class="form-group">
+                    <label>Preferred SSH Client</label>
+                    <select id="sshClientSelect" class="form-control" onchange="toggleCustomClientInput()">
+                        <option value="native">Native Windows/macOS SSH</option>
+                        <option value="putty">PuTTY Client</option>
+                        <option value="custom">Custom Handler...</option>
+                    </select>
+                </div>
+                <div class="form-group" id="customClientDiv" style="display:none;">
+                    <label>Custom Link Protocol & Prefix</label>
+                    <input type="text" id="customClientInput" class="form-control" placeholder="e.g., telnet">
+                </div>
+
+                <hr style="border-color: var(--border-color); margin: 0.5rem 0;">
+
+                <!-- SSH Fix/Registry Generator section -->
+                <div class="form-group">
+                    <label style="color: var(--accent-primary); display: flex; align-items: center; gap: 0.5rem;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        Fixing Broken SSH & RDP Links
+                    </label>
+                    <div class="info-card">
+                        Browsers block websites from launching local apps directly. To make <strong>ssh://</strong>, <strong>putty://</strong>, or <strong>rdp://</strong> links clickable, your Operating System must have a registered handler.
+                        <br><br>
+                        <strong>Windows Users:</strong> You can automatically configure Windows to open these links in Command Prompt or MSTSC by downloading and running our Registry Fix below.
+                    </div>
+                    <button class="btn-secondary" style="margin-top:0.5rem; justify-content:center;" onclick="downloadRegistryFix()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Download Windows .REG Fix
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('settingsModal')">Cancel</button>
+                <button class="btn-primary" onclick="saveSettings()">Save Preferences</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item Modal -->
+    <div class="modal-overlay" id="addModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Add New Connection</h3>
+                <button class="btn-icon" onclick="closeModal('addModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Connection Type</label>
+                    <select id="itemType" class="form-control">
+                        <option value="url">Web URL (HTTP/HTTPS)</option>
+                        <option value="ssh">SSH Shell</option>
+                        <option value="rdp">Remote Desktop (RDP)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Name / Label</label>
+                    <input type="text" id="itemName" class="form-control" placeholder="e.g., Core Firewall 01">
+                </div>
+                <div class="form-group">
+                    <label>Target (IP or URL)</label>
+                    <input type="text" id="itemValue" class="form-control" placeholder="e.g., https://10.0.0.1 or root@10.0.0.2">
+                </div>
+                <div class="form-group">
+                    <label>Location (Optional)</label>
+                    <input type="text" id="itemLocation" class="form-control" list="existingLocations" placeholder="e.g., Datacenter 1">
+                </div>
+                <div class="form-group">
+                    <label>Category (Optional)</label>
+                    <input type="text" id="itemCategory" class="form-control" list="existingCategories" placeholder="e.g., Firewalls">
+                </div>
+                <div class="form-group">
+                    <label>Subcategory (Optional)</label>
+                    <input type="text" id="itemSubcategory" class="form-control" list="existingSubcategories" placeholder="e.g., FortiGate">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('addModal')">Cancel</button>
+                <button class="btn-primary" onclick="saveNewItem()">Save Connection</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CSV Import Modal -->
+    <div class="modal-overlay" id="csvModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Import from CSV</h3>
+                <button class="btn-icon" onclick="closeModal('csvModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.5;">
+                    Upload a CSV file to bulk import connections. No headers required.<br><br>
+                    <strong>Format (6 columns):</strong><br>
+                    <code style="background: var(--bg-base); padding: 4px; border-radius: 4px;">type,name,target,loc(opt),cat(opt),subcat(opt)</code><br><br>
+                    <strong>Example:</strong><br>
+                    <code style="background: var(--bg-base); padding: 4px; border-radius: 4px; display: block; margin-top: 4px; white-space: pre-wrap;">url,Core-FW,https://10.0.0.1,HQ,Firewalls,FortiGate
+ssh,Dist-SW-1,admin@10.0.0.2,HQ,Switches,Core
+rdp,Main-Server,10.0.0.5,HQ,Servers,Windows</code>
+                </p>
+                <a href="data:text/csv;charset=utf-8,url%2CCore-FW%2Chttps%3A%2F%2F10.0.0.1%2CHQ%2CFirewalls%2CFortiGate%0Assh%2CDist-SW-1%2Cadmin%4010.0.0.2%2CHQ%2CSwitches%2CCore%20Switches%0Ardp%2CMain-Server%2C10.0.0.5%2CHQ%2CServers%2CWindows" download="template_nodes.csv" class="sample-csv-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Download Sample Template
+                </a>
+                <input type="file" id="csvFileInput" accept=".csv">
+                <button class="btn-secondary" style="justify-content: center; width: 100%; margin-top: 1rem;" onclick="document.getElementById('csvFileInput').click()">
+                    Select .csv File
+                </button>
+                <div id="csvFileName" style="font-size: 0.875rem; color: var(--accent-primary); text-align: center; margin-top: 0.5rem;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('csvModal')">Cancel</button>
+                <button class="btn-primary" onclick="processCSV()">Import</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">Action completed!</div>
+
+    <!-- Move/Edit Modal -->
+    <div class="modal-overlay" id="moveModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Edit Metadata</h3>
+                <button class="btn-icon" onclick="closeModal('moveModal')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label id="moveItemLabel">Modifying Node</label>
+                    
+                    <label style="margin-top:0.5rem;">Location</label>
+                    <input type="text" id="moveLocationInput" class="form-control" list="existingLocations" placeholder="Update location...">
+                    
+                    <label style="margin-top:0.5rem;">Category</label>
+                    <input type="text" id="moveCategoryInput" class="form-control" list="existingCategories" placeholder="Update category (e.g. Switches)...">
+
+                    <label style="margin-top:0.5rem;">Subcategory</label>
+                    <input type="text" id="moveSubcategoryInput" class="form-control" list="existingSubcategories" placeholder="Update subcategory (e.g. Core Switches)...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('moveModal')">Cancel</button>
+                <button class="btn-primary" onclick="saveMove()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Datalists for Autocomplete -->
+    <datalist id="existingLocations"></datalist>
+    <datalist id="existingCategories">
+        <option value="Router">
+        <option value="Switches">
+        <option value="Firewalls">
+        <option value="WLC">
+    </datalist>
+    <datalist id="existingSubcategories">
+        <option value="Core Switches">
+        <option value="Distribution Switches">
+        <option value="Access Switches">
+        <option value="FortiGate">
+        <option value="Palo Alto">
+    </datalist>
+
+    <script>
+        // State
+        let connections = JSON.parse(localStorage.getItem('nerveCenterData')) || [];
+        let rmcSettings = JSON.parse(localStorage.getItem('rmcSettings')) || { sshClient: 'native', customPrefix: '' };
+        let currentFilter = 'all';
+        let currentLocationFilter = 'all';
+        let currentCategoryFilter = 'all';
+        let searchQuery = '';
+        let itemToMoveId = null;
+
+        // DOM Elements
+        const grid = document.getElementById('connectionsGrid');
+        const searchInput = document.getElementById('searchInput');
+        const filterTabs = document.querySelectorAll('#filterTabs .filter-tab');
+        const fileInput = document.getElementById('csvFileInput');
+        const locationTabsContainer = document.getElementById('locationTabs');
+        const locationTabsWrapper = document.getElementById('locationTabsWrapper');
+        const categoryTabsContainer = document.getElementById('categoryTabs');
+        const categoryTabsWrapper = document.getElementById('categoryTabsWrapper');
+        const locDatalist = document.getElementById('existingLocations');
+        const catDatalist = document.getElementById('existingCategories');
+        const subcatDatalist = document.getElementById('existingSubcategories');
+
+        // Initialize App
+        function initApp() {
+            renderLocations();
+            renderCategories();
+            updateAllViews();
+            
+            // Hydrate Settings Modal inputs
+            document.getElementById('sshClientSelect').value = rmcSettings.sshClient;
+            document.getElementById('customClientInput').value = rmcSettings.customPrefix;
+            toggleCustomClientInput();
+        }
+
+        // UX Fix: Search bar filters ONLY grid list, not top analytics
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase();
+            renderGrid(getFilteredGrid()); 
+        });
+
+        // Tabs control the context/filters for the entire dashboard
+        filterTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                filterTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentFilter = tab.getAttribute('data-filter');
+                updateAllViews();
+            });
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if(e.target.files.length > 0) {
+                document.getElementById('csvFileName').textContent = `Selected: ${e.target.files[0].name}`;
+            }
+        });
+
+        // --- SETTINGS MANAGEMENT ---
+        function toggleCustomClientInput() {
+            const select = document.getElementById('sshClientSelect');
+            const customDiv = document.getElementById('customClientDiv');
+            customDiv.style.display = select.value === 'custom' ? 'flex' : 'none';
+        }
+
+        function saveSettings() {
+            rmcSettings.sshClient = document.getElementById('sshClientSelect').value;
+            rmcSettings.customPrefix = document.getElementById('customClientInput').value.trim();
+            localStorage.setItem('rmcSettings', JSON.stringify(rmcSettings));
+            closeModal('settingsModal');
+            showToast("Preferences saved! Link handlers updated.");
+            renderGrid(getFilteredGrid()); // Re-render grid to apply new ssh link/copy formats
+        }
+
+        function getSshLinkFormat(target) {
+            if (rmcSettings.sshClient === 'putty') return `putty://${escapeHTML(target)}`;
+            if (rmcSettings.sshClient === 'custom') return `${escapeHTML(rmcSettings.customPrefix)}://${escapeHTML(target)}`;
+            return `ssh://${escapeHTML(target)}`; // Native default
+        }
+
+        function getSshCopyFormat(target) {
+            if (rmcSettings.sshClient === 'putty') return `putty -ssh ${escapeHTML(target)}`;
+            if (rmcSettings.sshClient === 'custom') return `${escapeHTML(rmcSettings.customPrefix)} ${escapeHTML(target)}`;
+            return `ssh ${escapeHTML(target)}`; // Native default
+        }
+
+        function downloadRegistryFix() {
+            // Generates a local Windows registry file that routes ssh://, putty://, and rdp://
+            // protocol links to the system's command line, putty, or mstsc executables safely.
+            const regContent = `Windows Registry Editor Version 5.00
+
+; Register standard ssh:// protocol to open in Command Prompt
+[HKEY_CLASSES_ROOT\\ssh]
+@="URL:SSH Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\\ssh\\shell\\open\\command]
+@="cmd.exe /V:ON /k \\"echo Connecting to %1 && set TARGET=%1 && set TARGET=!TARGET:ssh://=! && set TARGET=!TARGET:/=! && ssh !TARGET!\\""
+
+; Register putty:// protocol if user chooses PuTTY
+[HKEY_CLASSES_ROOT\\putty]
+@="URL:PuTTY Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\\putty\\shell\\open\\command]
+@="cmd.exe /V:ON /c \\"set TARGET=%1 && set TARGET=!TARGET:putty://=! && set TARGET=!TARGET:/=! && start putty -ssh !TARGET!\\""
+
+; Register rdp:// protocol for Remote Desktop (mstsc)
+[HKEY_CLASSES_ROOT\\rdp]
+@="URL:RDP Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\\rdp\\shell\\open\\command]
+@="cmd.exe /V:ON /c \\"set TARGET=%1 && set TARGET=!TARGET:rdp://=! && set TARGET=!TARGET:/=! && start mstsc /v:!TARGET!\\""
+`;
+            const blob = new Blob([regContent], { type: 'text/plain;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "Windows_Protocol_Link_Fix.reg";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Registry fix downloaded! Double click to apply.");
+        }
+
+
+        // --- DASHBOARD ANALYTICS RENDERING ---
+        function drawGauge(canvasId, percentage) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            
+            // Fallback dimensions to prevent negative radius error if rect isn't fully drawn
+            const cw = rect.width || 200;
+            const ch = rect.height || 150;
+
+            canvas.width = cw * dpr;
+            canvas.height = ch * dpr;
+            ctx.scale(dpr, dpr);
+            
+            ctx.clearRect(0, 0, cw, ch);
+            
+            const cx = cw / 2;
+            const cy = ch / 2 + 15;
+            
+            // Calculate radius safely
+            const radius = Math.max(1, Math.min(cw, ch) / 2 - 20);
+            
+            // Background track
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, Math.PI * 0.75, Math.PI * 2.25);
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 15;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            
+            // Foreground track
+            const endAngle = Math.PI * 0.75 + (Math.PI * 1.5 * (percentage / 100));
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, Math.PI * 0.75, endAngle);
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 15;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            
+            // Text inside gauge
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 28px system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`${percentage.toFixed(0)}%`, cx, cy);
+        }
+
+        function getFilteredStats() {
+            return connections.filter(item => {
+                const matchesFilter = currentFilter === 'all' || item.type === currentFilter;
+                const matchesLoc = currentLocationFilter === 'all' || (item.location || '') === currentLocationFilter;
+                const matchesCat = currentCategoryFilter === 'all' || (item.category || '') === currentCategoryFilter;
+                return matchesFilter && matchesLoc && matchesCat;
+            });
+        }
+
+        function getFilteredGrid() {
+            const baseData = getFilteredStats();
+            if (!searchQuery) return baseData;
+            
+            return baseData.filter(item => {
+                const safeName = (item.name || '').toLowerCase();
+                const safeValue = (item.value || '').toLowerCase();
+                return safeName.includes(searchQuery) || safeValue.includes(searchQuery);
+            });
+        }
+
+        function updateAllViews() {
+            const statsData = getFilteredStats();
+            renderDashboardStats(statsData);
+            renderCategoryTable(statsData);
+            renderGrid(getFilteredGrid());
+        }
+
+        function renderDashboardStats(data) {
+            const total = data.length;
+            let secure = 0;
+            let unsecure = 0;
+            const locations = new Set();
+
+            data.forEach(c => {
+                const val = (c.value || '').toLowerCase();
+                if (c.type === 'ssh' || c.type === 'rdp' || val.startsWith('https://')) {
+                    secure++;
+                } else if (val.startsWith('http://') || c.type === 'url') {
+                    unsecure++; 
+                }
+                
+                if (c.location && c.location.trim() !== '') {
+                    locations.add(c.location.trim());
+                }
+            });
+
+            document.getElementById('statTotalNodes').textContent = total;
+            document.getElementById('statSecureNodes').textContent = secure;
+            document.getElementById('statUnsecureNodes').textContent = unsecure;
+            document.getElementById('statLocations').textContent = locations.size;
+
+            let score = 0;
+            if (total > 0) {
+                score = (secure / total) * 100;
+            } else {
+                score = 100;
+            }
+
+            drawGauge('gauge_global', score);
+        }
+
+        function renderCategoryTable(data) {
+            const tbody = document.getElementById('categoryTableBody');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="2" style="text-align: center; color: var(--text-muted); padding: 2rem;">No categorized data available</td></tr>`;
+                return;
+            }
+
+            const catMap = {};
+            data.forEach(c => {
+                const cat = (c.category || 'Uncategorized').trim();
+                const sub = (c.subcategory || 'General').trim();
+                
+                if (!catMap[cat]) catMap[cat] = { total: 0, subcats: {} };
+                if (!catMap[cat].subcats[sub]) catMap[cat].subcats[sub] = 0;
+                
+                catMap[cat].total++;
+                catMap[cat].subcats[sub]++;
+            });
+
+            const sortedCats = Object.keys(catMap).sort();
+
+            sortedCats.forEach(cat => {
+                const trCat = document.createElement('tr');
+                trCat.className = 'row-category';
+                trCat.innerHTML = `<td>${escapeHTML(cat)}</td><td>${catMap[cat].total}</td>`;
+                tbody.appendChild(trCat);
+
+                const sortedSubs = Object.keys(catMap[cat].subcats).sort();
+                sortedSubs.forEach(sub => {
+                    const trSub = document.createElement('tr');
+                    trSub.className = 'row-subcategory';
+                    trSub.innerHTML = `<td>${escapeHTML(sub)}</td><td>${catMap[cat].subcats[sub]}</td>`;
+                    tbody.appendChild(trSub);
+                });
+            });
+        }
+
+        // --- FILTER TAB RENDER LOGIC ---
+        function renderLocations() {
+            const locs = [...new Set(connections.map(c => c.location).filter(l => l && l.trim() !== ''))].sort();
+            locDatalist.innerHTML = locs.map(loc => `<option value="${escapeHTML(loc)}">`).join('');
+
+            if (locs.length === 0) {
+                locationTabsWrapper.style.display = 'none';
+                currentLocationFilter = 'all';
+                return;
+            }
+
+            locationTabsWrapper.style.display = 'flex';
+            let html = `<div class="filter-tab ${currentLocationFilter === 'all' ? 'active' : ''}" onclick="setLocationFilter('all')">All Locations</div>`;
+            locs.forEach(loc => {
+                const isActive = currentLocationFilter === loc ? 'active' : '';
+                html += `<div class="filter-tab ${isActive}" onclick="setLocationFilter('${escapeHTML(loc)}')">${escapeHTML(loc)}</div>`;
+            });
+            locationTabsContainer.innerHTML = html;
+        }
+
+        function renderCategories() {
+            const rawCats = connections.map(c => c.category).filter(c => c && c.trim() !== '');
+            const rawSubs = connections.map(c => c.subcategory).filter(c => c && c.trim() !== '');
+            
+            const standardCats = ['Router', 'Switches', 'Firewalls', 'WLC'];
+            const standardSubs = ['Core Switches', 'Distribution Switches', 'Access Switches', 'FortiGate', 'Palo Alto'];
+
+            const uniqueDataCats = [...new Set(rawCats)].sort();
+            const allDatalistCats = [...new Set([...standardCats, ...uniqueDataCats])].sort();
+            catDatalist.innerHTML = allDatalistCats.map(cat => `<option value="${escapeHTML(cat)}">`).join('');
+
+            const uniqueDataSubs = [...new Set(rawSubs)].sort();
+            const allDatalistSubs = [...new Set([...standardSubs, ...uniqueDataSubs])].sort();
+            subcatDatalist.innerHTML = allDatalistSubs.map(sub => `<option value="${escapeHTML(sub)}">`).join('');
+
+            if (uniqueDataCats.length === 0) {
+                categoryTabsWrapper.style.display = 'none';
+                currentCategoryFilter = 'all';
+                return;
+            }
+
+            categoryTabsWrapper.style.display = 'flex';
+            let html = `<div class="filter-tab ${currentCategoryFilter === 'all' ? 'active' : ''}" onclick="setCategoryFilter('all')">All Categories</div>`;
+            uniqueDataCats.forEach(cat => {
+                const isActive = currentCategoryFilter === cat ? 'active' : '';
+                html += `<div class="filter-tab ${isActive}" onclick="setCategoryFilter('${escapeHTML(cat)}')">${escapeHTML(cat)}</div>`;
+            });
+            categoryTabsContainer.innerHTML = html;
+        }
+
+        function setLocationFilter(loc) { currentLocationFilter = loc; renderLocations(); updateAllViews(); }
+        function setCategoryFilter(cat) { currentCategoryFilter = cat; renderCategories(); updateAllViews(); }
+
+        // --- GRID RENDER LOGIC ---
+        function renderGrid(data) {
+            grid.innerHTML = '';
+            
+            if (data.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                        <h3>No connections found</h3>
+                        <p style="margin-top: 0.5rem">Adjust your filters or query to see results.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                const isUrl = item.type === 'url';
+                const isRdp = item.type === 'rdp';
+                const typeLabel = isUrl ? 'WEB URL' : (isRdp ? 'RDP' : 'SSH');
+                const typeClass = isUrl ? 'type-url' : (isRdp ? 'type-rdp' : 'type-ssh');
+                
+                const iconLink = isUrl ? 
+                    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>` : 
+                    (isRdp ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>` : 
+                    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>`);
+
+                // Get dynamic values based on User Settings
+                const displayValue = item.value;
+                const fullCopyString = isUrl ? item.value : (isRdp ? `mstsc /v:${item.value}` : getSshCopyFormat(item.value));
+                const clickActionUrl = isUrl ? 
+                                       (item.value.startsWith('http') ? escapeHTML(item.value) : 'http://' + escapeHTML(item.value)) : 
+                                       (isRdp ? `rdp://${escapeHTML(item.value)}` : getSshLinkFormat(item.value));
+
+                const locationHtml = item.location ? `<div class="card-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>${escapeHTML(item.location)}</div>` : '';
+                
+                let combinedCategory = [];
+                if (item.category) combinedCategory.push(escapeHTML(item.category));
+                if (item.subcategory) combinedCategory.push(escapeHTML(item.subcategory));
+                const categoryHtml = combinedCategory.length > 0 ? `<div class="card-category-tag">${combinedCategory.join(' / ')}</div>` : '';
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div>
+                            <div class="card-meta-tags">
+                                <span class="card-type ${typeClass}">${typeLabel}</span>
+                                ${categoryHtml}
+                            </div>
+                            <div class="card-title">${escapeHTML(item.name)}</div>
+                            ${locationHtml}
+                        </div>
+                        <div style="display:flex; gap:0.25rem;">
+                            <button class="btn-icon" onclick="openMoveModal('${item.id}')" title="Edit Metadata">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
+                            <button class="btn-icon danger" onclick="deleteItem('${item.id}')" title="Delete">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div style="flex: 1;"></div>
+                    <div class="card-value-container">
+                        <div class="card-value" title="${escapeHTML(displayValue)}">${escapeHTML(displayValue)}</div>
+                        <div class="card-actions">
+                            <a href="${clickActionUrl}" ${isUrl ? 'target="_blank"' : ''} class="btn-icon" title="${isUrl ? 'Open Link' : 'Launch Client'}">
+                                ${iconLink}
+                            </a>
+                            <button class="btn-icon" onclick="copyToClipboard('${escapeHTML(fullCopyString)}')" title="Copy to Clipboard">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // --- MODAL & DATA MANAGEMENT ---
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            if(id === 'addModal') {
+                document.getElementById('itemName').value = '';
+                document.getElementById('itemValue').value = '';
+                document.getElementById('itemLocation').value = '';
+                document.getElementById('itemCategory').value = '';
+                document.getElementById('itemSubcategory').value = '';
+            }
+            if(id === 'csvModal') {
+                fileInput.value = '';
+                document.getElementById('csvFileName').textContent = '';
+            }
+            if(id === 'moveModal') {
+                document.getElementById('moveLocationInput').value = '';
+                document.getElementById('moveCategoryInput').value = '';
+                document.getElementById('moveSubcategoryInput').value = '';
+                itemToMoveId = null;
+            }
+        }
+
+        function openMoveModal(id) {
+            const item = connections.find(i => i.id === id);
+            if(item) {
+                itemToMoveId = id;
+                document.getElementById('moveItemLabel').innerHTML = `Editing: <strong>${escapeHTML(item.name)}</strong>`;
+                document.getElementById('moveLocationInput').value = item.location || '';
+                document.getElementById('moveCategoryInput').value = item.category || '';
+                document.getElementById('moveSubcategoryInput').value = item.subcategory || '';
+                openModal('moveModal');
+            }
+        }
+
+        function saveMove() {
+            if(!itemToMoveId) return;
+            const itemIndex = connections.findIndex(i => i.id === itemToMoveId);
+            if(itemIndex > -1) {
+                connections[itemIndex].location = document.getElementById('moveLocationInput').value.trim();
+                connections[itemIndex].category = document.getElementById('moveCategoryInput').value.trim();
+                connections[itemIndex].subcategory = document.getElementById('moveSubcategoryInput').value.trim();
+                updateDataAndRender();
+                closeModal('moveModal');
+                showToast("Node details updated!");
+            }
+        }
+
+        function saveNewItem() {
+            const type = document.getElementById('itemType').value;
+            const name = document.getElementById('itemName').value.trim();
+            let value = document.getElementById('itemValue').value.trim();
+            const location = document.getElementById('itemLocation').value.trim();
+            const category = document.getElementById('itemCategory').value.trim();
+            const subcategory = document.getElementById('itemSubcategory').value.trim();
+
+            if (!name || !value) {
+                showToast("Please fill in the required fields.");
+                return;
+            }
+
+            if (type === 'ssh' && value.toLowerCase().startsWith('ssh ')) {
+                value = value.substring(4).trim();
+            }
+            
+            if (type === 'rdp' && value.toLowerCase().startsWith('mstsc /v:')) {
+                value = value.substring(9).trim();
+            }
+
+            // Prevent Duplicates
+            const isDuplicate = connections.some(c => c.type === type && c.name === name && c.value === value);
+            if (isDuplicate) {
+                showToast("Error: This connection already exists.");
+                return;
+            }
+
+            connections.push({ id: generateId(), type, name, value, location, category, subcategory });
+            updateDataAndRender();
+            closeModal('addModal');
+            showToast("Connection added!");
+        }
+
+        function deleteItem(id) {
+            if (confirm("Are you sure you want to delete this connection?")) {
+                connections = connections.filter(item => item.id !== id);
+                updateDataAndRender();
+            }
+        }
+
+        function updateDataAndRender() {
+            saveData();
+            initApp(); 
+        }
+
+        function saveData() {
+            localStorage.setItem('nerveCenterData', JSON.stringify(connections));
+        }
+
+        // --- EXPORT, IMPORT & PURGE ---
+        function processCSV() {
+            const file = fileInput.files[0];
+            if (!file) { showToast("Please select a file."); return; }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split('\n');
+                let addedCount = 0;
+                let skippedCount = 0;
+
+                lines.forEach(line => {
+                    const parts = parseCSVLine(line);
+                    if (parts.length >= 3) {
+                        const type = parts[0].trim().toLowerCase();
+                        const name = parts[1].trim();
+                        let value = parts[2].trim();
+                        const location = parts[3] ? parts[3].trim() : '';
+                        const category = parts[4] ? parts[4].trim() : '';
+                        const subcategory = parts[5] ? parts[5].trim() : '';
+
+                        if ((type === 'url' || type === 'ssh' || type === 'rdp') && name && value) {
+                            if (type === 'ssh' && value.toLowerCase().startsWith('ssh ')) value = value.substring(4).trim();
+                            if (type === 'rdp' && value.toLowerCase().startsWith('mstsc /v:')) value = value.substring(9).trim();
+                            
+                            // Prevent Duplicates during CSV import
+                            const isDuplicate = connections.some(c => c.type === type && c.name === name && c.value === value);
+                            
+                            if (!isDuplicate) {
+                                connections.push({ id: generateId(), type, name, value, location, category, subcategory });
+                                addedCount++;
+                            } else {
+                                skippedCount++;
+                            }
+                        }
+                    }
+                });
+
+                if (addedCount > 0) {
+                    updateDataAndRender();
+                    let msg = `Imported ${addedCount} connections.`;
+                    if (skippedCount > 0) msg += ` (${skippedCount} duplicates skipped)`;
+                    showToast(msg);
+                } else if (skippedCount > 0) {
+                    showToast(`No new connections added. All ${skippedCount} were duplicates.`);
+                } else {
+                    showToast("No valid connections found in CSV.");
+                }
+                closeModal('csvModal');
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                if (line[i] === '"') inQuotes = !inQuotes;
+                else if (line[i] === ',' && !inQuotes) { result.push(current); current = ''; }
+                else current += line[i];
+            }
+            result.push(current);
+            return result;
+        }
+
+        function exportCSV() {
+            if (connections.length === 0) { showToast("No data to export."); return; }
+            let csvContent = "";
+            connections.forEach(item => {
+                const row = [item.type, item.name, item.value, item.location || "", item.category || "", item.subcategory || ""]
+                    .map(field => {
+                        const str = String(field);
+                        return (str.includes(',') || str.includes('"') || str.includes('\n')) ? `"${str.replace(/"/g, '""')}"` : str;
+                    }).join(",");
+                csvContent += row + "\r\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `rmc_export_${new Date().toISOString().slice(0,10)}.csv`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Database exported to CSV.");
+        }
+
+        function wipeDatabase() {
+            if (connections.length === 0) { showToast("Database is already empty."); return; }
+            if (confirm("WARNING: This will permanently delete ALL nodes. Proceed?")) {
+                if (confirm("FINAL CONFIRMATION: Are you sure you want to PURGE the database?")) {
+                    connections = [];
+                    updateDataAndRender();
+                    showToast("Database purged successfully.");
+                }
+            }
+        }
+
+        // --- UTILITIES ---
+        function generateId() { return Math.random().toString(36).substr(2, 9) + Date.now().toString(36); }
+        
+        function escapeHTML(str) { 
+            // String() cast prevents crash if value is somehow undefined
+            return String(str || '').replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])); 
+        }
+
+        function copyToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed"; document.body.appendChild(textArea);
+            textArea.focus(); textArea.select();
+            try { document.execCommand('copy'); showToast("Copied to clipboard!"); } 
+            catch (err) { showToast("Failed to copy automatically."); }
+            document.body.removeChild(textArea);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Boot
+        window.onload = initApp;
+    </script>
+</body>
+</html>
