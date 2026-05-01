@@ -583,13 +583,48 @@
 
                 <hr style="border-color: var(--border-color); margin: 0.5rem 0;">
 
+                <!-- Metadata Management -->
+                <div class="form-group">
+                    <label style="color: var(--danger); display: flex; align-items: center; gap: 0.5rem;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
+                        Bulk Delete Metadata
+                    </label>
+                    <div class="info-card" style="margin-top: 0; background-color: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3);">
+                        If you added a Location or Category incorrectly, select it below to instantly remove it from all nodes.
+                    </div>
+                    
+                    <div style="display: flex; gap: 0.5rem; align-items: flex-end; margin-top: 0.5rem;">
+                        <div style="flex: 1;">
+                            <select id="deleteLocationSelect" class="form-control">
+                                <option value="">-- Select Location --</option>
+                            </select>
+                        </div>
+                        <button class="btn-danger-outline" style="padding: 0.75rem 1rem;" onclick="deleteLocationBulk()" title="Delete Location">
+                            Delete
+                        </button>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem; align-items: flex-end; margin-top: 0.5rem;">
+                        <div style="flex: 1;">
+                            <select id="deleteCategorySelect" class="form-control">
+                                <option value="">-- Select Category --</option>
+                            </select>
+                        </div>
+                        <button class="btn-danger-outline" style="padding: 0.75rem 1rem;" onclick="deleteCategoryBulk()" title="Delete Category">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+
+                <hr style="border-color: var(--border-color); margin: 0.5rem 0;">
+
                 <!-- SSH Fix/Registry Generator section -->
                 <div class="form-group">
                     <label style="color: var(--accent-primary); display: flex; align-items: center; gap: 0.5rem;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                        Fixing Broken SSH & RDP Links
+                        Fixing Broken Protocol Links
                     </label>
-                    <div class="info-card">
+                    <div class="info-card" style="margin-top: 0;">
                         Browsers block websites from launching local apps directly. To make <strong>ssh://</strong>, <strong>putty://</strong>, or <strong>rdp://</strong> links clickable, your Operating System must have a registered handler.
                         <br><br>
                         <strong>Windows Users:</strong> You can automatically configure Windows to open these links in Command Prompt or MSTSC by downloading and running our Registry Fix below.
@@ -601,7 +636,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeModal('settingsModal')">Cancel</button>
+                <button class="btn-secondary" onclick="closeModal('settingsModal')">Close</button>
                 <button class="btn-primary" onclick="saveSettings()">Save Preferences</button>
             </div>
         </div>
@@ -937,6 +972,7 @@ rdp,Main-Server,10.0.0.5,HQ,Servers,Windows</code>
             renderDashboardStats(statsData);
             renderCategoryTable(statsData);
             renderGrid(getFilteredGrid());
+            populateMetadataDropdowns();
         }
 
         function renderDashboardStats(data) {
@@ -1064,6 +1100,48 @@ rdp,Main-Server,10.0.0.5,HQ,Servers,Windows</code>
 
         function setLocationFilter(loc) { currentLocationFilter = loc; renderLocations(); updateAllViews(); }
         function setCategoryFilter(cat) { currentCategoryFilter = cat; renderCategories(); updateAllViews(); }
+
+        // --- BULK DELETE METADATA LOGIC ---
+        function populateMetadataDropdowns() {
+            const locs = [...new Set(connections.map(c => c.location).filter(l => l && l.trim() !== ''))].sort();
+            const cats = [...new Set(connections.map(c => c.category).filter(c => c && c.trim() !== ''))].sort();
+            
+            const locSelect = document.getElementById('deleteLocationSelect');
+            const catSelect = document.getElementById('deleteCategorySelect');
+            
+            if (locSelect) {
+                locSelect.innerHTML = '<option value="">-- Select Location --</option>' + locs.map(l => `<option value="${escapeHTML(l)}">${escapeHTML(l)}</option>`).join('');
+            }
+            if (catSelect) {
+                catSelect.innerHTML = '<option value="">-- Select Category --</option>' + cats.map(c => `<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
+            }
+        }
+
+        function deleteLocationBulk() {
+            const loc = document.getElementById('deleteLocationSelect').value;
+            if (!loc) return;
+            if (confirm(`Are you sure you want to completely remove the location "${loc}" from all nodes?`)) {
+                connections.forEach(c => {
+                    if (c.location === loc) c.location = '';
+                });
+                if (currentLocationFilter === loc) currentLocationFilter = 'all';
+                updateDataAndRender();
+                showToast(`Location "${loc}" removed successfully.`);
+            }
+        }
+
+        function deleteCategoryBulk() {
+            const cat = document.getElementById('deleteCategorySelect').value;
+            if (!cat) return;
+            if (confirm(`Are you sure you want to completely remove the category "${cat}" from all nodes?`)) {
+                connections.forEach(c => {
+                    if (c.category === cat) c.category = '';
+                });
+                if (currentCategoryFilter === cat) currentCategoryFilter = 'all';
+                updateDataAndRender();
+                showToast(`Category "${cat}" removed successfully.`);
+            }
+        }
 
         // --- GRID RENDER LOGIC ---
         function renderGrid(data) {
@@ -1373,3 +1451,4 @@ rdp,Main-Server,10.0.0.5,HQ,Servers,Windows</code>
     </script>
 </body>
 </html>
+```eof
