@@ -249,7 +249,7 @@
                 <!-- Injected via JS -->
             </div>
             
-            <div class="sidebar-section-title">GAL Devices</div>
+            <div class="sidebar-section-title" id="sidebarTitleDisplay">IT Inventory</div>
             <div id="sidebarNav" class="sidebar-menu">
                 <!-- Dynamically populated nested hover menu -->
             </div>
@@ -395,6 +395,11 @@
                         </button>
                     </div>
                     <div id="logoFileName" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Upload an image to replace the default icon.</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Sidebar Title</label>
+                    <input type="text" id="sidebarTitleInput" class="form-control" placeholder="e.g., IT Inventory">
                 </div>
 
                 <hr style="border-color: var(--border-color); margin: 0.5rem 0;">
@@ -593,7 +598,7 @@ rdp,Main-Server,10.0.0.5,HQ,Servers,Windows</code>
     <script>
         // Robust State Initialization (Prevents UI freezing if localStorage is blocked)
         let connections = [];
-        let rmcSettings = { sshClient: 'native', customPrefix: '', layout: 'grid', customLogo: null };
+        let rmcSettings = { sshClient: 'native', customPrefix: '', layout: 'grid', customLogo: null, sidebarTitle: 'IT Inventory' };
 
         try {
             const savedData = localStorage.getItem('nerveCenterData');
@@ -609,6 +614,10 @@ rdp,Main-Server,10.0.0.5,HQ,Servers,Windows</code>
                     rmcSettings = { ...rmcSettings, ...parsedSettings };
                 }
             }
+            
+            // Ensure default exists if upgrading from an older version
+            if (!rmcSettings.sidebarTitle) rmcSettings.sidebarTitle = 'IT Inventory';
+            
         } catch (e) {
             console.warn("Local storage is unavailable or corrupted.", e);
         }
@@ -672,6 +681,7 @@ rdp,Main-Server,10.0.0.5,HQ,Servers,Windows</code>
             document.getElementById('sshClientSelect').value = rmcSettings.sshClient || 'native';
             document.getElementById('customClientInput').value = rmcSettings.customPrefix || '';
             document.getElementById('layoutSelect').value = rmcSettings.layout || 'grid';
+            document.getElementById('sidebarTitleInput').value = rmcSettings.sidebarTitle || 'IT Inventory';
             toggleCustomClientInput();
         }
 
@@ -698,8 +708,10 @@ rdp,Main-Server,10.0.0.5,HQ,Servers,Windows</code>
                 headerTitleContainer.innerHTML = `${logoHtml} <span style="margin-left: 0.5rem;">Central Management Dashboard</span>`;
             }
             
-            // Also update the landing page logo to keep them synchronized
-            initLanding();
+            const sidebarTitleDisplay = document.getElementById('sidebarTitleDisplay');
+            if (sidebarTitleDisplay) {
+                sidebarTitleDisplay.textContent = rmcSettings.sidebarTitle || 'IT Inventory';
+            }
         }
 
         if (logoFileInput) {
@@ -724,6 +736,7 @@ rdp,Main-Server,10.0.0.5,HQ,Servers,Windows</code>
             rmcSettings.sshClient = document.getElementById('sshClientSelect').value;
             rmcSettings.customPrefix = document.getElementById('customClientInput').value.trim();
             rmcSettings.layout = document.getElementById('layoutSelect').value;
+            rmcSettings.sidebarTitle = document.getElementById('sidebarTitleInput').value.trim() || 'IT Inventory';
             
             try {
                 localStorage.setItem('rmcSettings', JSON.stringify(rmcSettings));
@@ -1137,7 +1150,10 @@ rdp,Main-Server,10.0.0.5,HQ,Servers,Windows</code>
                 if (csvFileNameEl) csvFileNameEl.textContent = ''; 
             }
             if(id === 'moveModal') { ['moveNameInput','moveValueInput','moveLocationInput','moveCategoryInput','moveSubcategoryInput'].forEach(i => document.getElementById(i).value = ''); itemToMoveId = null; }
-            if(id === 'settingsModal') { document.getElementById('layoutSelect').value = rmcSettings.layout; }
+            if(id === 'settingsModal') { 
+                document.getElementById('layoutSelect').value = rmcSettings.layout; 
+                document.getElementById('sidebarTitleInput').value = rmcSettings.sidebarTitle || 'IT Inventory';
+            }
         }
 
         function openMoveModal(id) {
