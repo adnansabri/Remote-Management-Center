@@ -39,7 +39,7 @@ To bypass this and allow 1-click remote management, RMC uses **Custom URI Scheme
 
 ## 🚀 Getting Started
 
-1. Download the `dashboard.html` file.
+1. Download the `Update new_version.html` file.
 2. Double-click the file to open it in your preferred web browser (Chrome, Edge, Firefox, Safari).
 3. Click **Add New** to manually add your first node, or click **Import** to upload a CSV file.
 4. *(Windows Users Only)*: Go to the **Settings** menu and download the **.REG Fix** to enable 1-click launching of SSH and RDP clients.
